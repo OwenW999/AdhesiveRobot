@@ -589,7 +589,7 @@ void runFixtureManager() {
 
     if (digitalRead(BUTTON_PIN) == LOW) {
         if (canRotateFixture()) {
-            fixtureHasVHB[(currentFixture + 2) % 5] = true;
+            fixtureHasVHB[(currentFixture + 3) % 5] = true;
             rotateFixture();
         }
     }
