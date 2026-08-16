@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "AdhesiveRobot",
+			"path": ".."
+		},
+		{
+			"name": "Adhesive Robot",
+			"path": "../../../PlatformIO/Projects/Adhesive Robot"
+		}
+	],
+	"settings": {}
+}
