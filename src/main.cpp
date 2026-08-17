@@ -41,12 +41,12 @@ const long SCREW_TOP = 0;
 const long SCREW_DOWN = -3000;
 const long QUARTER_REV_STEPS = 1000;
 
-const int SERVO1_OPEN = 20;
-const int SERVO2_OPEN = 0;
-const int SERVO1_GRAB = 120;
-const int SERVO2_GRAB = 173;
-const int SERVO1_GRAB_LOOSE = 115;
-const int SERVO2_GRAB_LOOSE = 168;
+const int SERVO1_OPEN = 0;
+const int SERVO2_OPEN = 21;
+const int SERVO1_GRAB = 100;
+const int SERVO2_GRAB = 194;
+const int SERVO1_GRAB_LOOSE = 95;
+const int SERVO2_GRAB_LOOSE = 189;
 
 int currentFixture = 0;
 
@@ -257,7 +257,7 @@ bool runActions() {
 
 bool outputBeltActive = false;
 unsigned long outputBeltStopTime = 0;
-const unsigned long OUTPUT_CLEAR_MS = 1500;  // tune to your belt/mount
+const unsigned long OUTPUT_CLEAR_MS = 5000;  // tune to your belt/mount
 
 void startOutputBelt() {
     outputBeltActive = true;
@@ -274,11 +274,22 @@ void serviceOutputBelt() {
     }
 }
 
+void serviceInputBelt() {
+    if (!mountReady && digitalRead(LIMIT_BELT) == HIGH) {
+        Serial.println("MOUNT READY");
+        mountReady = true;
+        motorInBelt.setSpeed(0);
+    }
+}
+
 // ============================================================
 // SETUP
 // ============================================================
 
 void setup() {
+
+
+
     Serial.begin(9600);
 
     pinMode(LIMIT_NEMA23, INPUT_PULLUP);
@@ -291,25 +302,30 @@ void setup() {
     digitalWrite(BUTTON_PIN_LIGHT, LOW);
 
     motorOutBelt.setMaxSpeed(2000);
-    motorOutBelt.setSpeed(-1800);
+    motorOutBelt.setSpeed(-1600);
 
     motorInBelt.setMaxSpeed(2000);
     motorInBelt.setSpeed(-1800);
 
     motorFixturePlayer.setMaxSpeed(2000);
     motorFixturePlayer.setAcceleration(1000);
-    motorFixturePlayer.setSpeed(500);
+    motorFixturePlayer.setSpeed(-500);
 
-    motorNema23Table.setMaxSpeed(2000);
-    motorNema23Table.setAcceleration(1000);
+    motorNema23Table.setMaxSpeed(15000);
+    motorNema23Table.setAcceleration(5000);
 
-    motorNema23Screw.setMaxSpeed(2000);
-    motorNema23Screw.setAcceleration(1000);
+    motorNema23Screw.setMaxSpeed(20000);
+    motorNema23Screw.setAcceleration(12000);
 
     servo1.attach(SERVO1_PIN);
     servo2.attach(SERVO2_PIN);
 
-    openGripper();
+    // 0 is open for servo 1
+    servo1.write(SERVO1_GRAB);
+
+    // 21 is open for servo 2 (the servo closer to the middle)
+    servo2.write(SERVO2_GRAB);
+    // openGripper();
 
     Serial.println("ROBOT STARTING");
 }
@@ -319,19 +335,20 @@ void setup() {
 // ============================================================
 
 void loop() {
-    runMotors();
+    // runMotors();
 
-    if (!homed) {
-        runHoming();
-        updateFixtureButtonLight();
-        return;
-    }
-    motorInBelt.runSpeed();
-    serviceOutputBelt(); 
+    // serviceInputBelt(); 
+    // if (!homed) {
+    //     runHoming();
+    //     updateFixtureButtonLight();
+    //     return;
+    // }
+    // serviceOutputBelt(); 
+    
 
-    runMainProcess();
-    runFixtureManager();
-    updateFixtureButtonLight();
+    // runMainProcess();
+    // runFixtureManager();
+    // updateFixtureButtonLight();
 }
 
 // ============================================================
@@ -339,7 +356,6 @@ void loop() {
 // ============================================================
 
 void runMotors() {
-    motorOutBelt.runSpeed();
     motorInBelt.runSpeed();
     motorFixturePlayer.run();
     motorNema23Table.run();
@@ -362,7 +378,7 @@ void runHoming() {
                 motorNema23Screw.stop();
                 motorNema23Screw.setCurrentPosition(0);
                 Serial.println("Screw homed.");
-
+                
                 motorNema23Screw.moveTo(-2000);
                 homeState = HOME_SCREW_BACKOFF;
             }
@@ -399,7 +415,7 @@ void runHoming() {
             break;
 
         case HOME_FIXTURE:
-            motorFixturePlayer.setSpeed(500);
+            motorFixturePlayer.setSpeed(-500);
 
             if (digitalRead(HALL_PIN) == HIGH) {
                 motorFixturePlayer.runSpeed();
@@ -427,32 +443,31 @@ void runHoming() {
 void runMainProcess() {
     switch (processState) {
         case PROCESS_WAIT_MOUNT:
-            if (digitalRead(LIMIT_BELT) == HIGH) {
-                Serial.println("MOUNT READY");
-                mountReady = true;
-                motorInBelt.setSpeed(0);
+
+            if (!actionsRunning) {
+                clearActions();
+                addTableAndScrew(216, 43);
+                actionsRunning = true;
+            }
+            if (runActions() && mountReady) {
                 processState = PROCESS_PICK_MOUNT;
+                Serial.println("PICKING UP MOUNT");
             }
             break;
 
         case PROCESS_PICK_MOUNT:
             if (!actionsRunning) {
-                Serial.println("PICKING UP MOUNT");
-
                 clearActions();
 
-                addTableAndScrew(216, 43);
                 addScrew(79);
                 addGrab();
                 addLoosen();
                 addScrew(82);
                 addGrab();
-
                 actionsRunning = true;
             }
 
             if (runActions()) {
-                mountReady = false;
                 processState = PROCESS_MOVE_TO_FIXTURE;
                 Serial.println("MOVING TO FIXTURE");
             }
@@ -470,6 +485,8 @@ void runMainProcess() {
             }
 
             if (runActions()) {
+                mountReady = false;
+                motorInBelt.setSpeed(-1800);
                 processState = PROCESS_WAIT_FOR_VHB;
             }
             break;
@@ -557,12 +574,20 @@ void runMainProcess() {
             // Serial.println("RELEASING MOUNT");
 
             // NEED TO RAISE BACK UP BEFORE I START THE PROCESS AGAIN!!!
-            openGripper();
-            
-            startOutputBelt(); 
-            motorInBelt.setSpeed(-1800);
+            if (!actionsRunning) {
+                clearActions();
 
-            processState = PROCESS_WAIT_MOUNT;
+                openGripper();
+                addScrew(45);
+                startOutputBelt(); 
+
+                actionsRunning = true;
+            }
+
+            if (runActions()) {
+                processState = PROCESS_WAIT_MOUNT;
+            }
+
             break;
     }
 }
