@@ -41,12 +41,28 @@ const long SCREW_TOP = 0;
 const long SCREW_DOWN = -3000;
 const long QUARTER_REV_STEPS = 1000;
 
+
+// TUNE MORE
 const int SERVO1_OPEN = 0;
-const int SERVO2_OPEN = 21;
-const int SERVO1_GRAB = 100;
-const int SERVO2_GRAB = 194;
-const int SERVO1_GRAB_LOOSE = 95;
-const int SERVO2_GRAB_LOOSE = 189;
+const int SERVO2_OPEN = 8;
+const int SERVO1_GRAB = 62;
+const int SERVO2_GRAB = 268;
+
+const int SERVO1_GRAB_LOOSE = 55;
+const int SERVO2_GRAB_LOOSE = 260;
+
+const int SERVO_MIN_US = 500;    // 0°
+const int SERVO_MAX_US = 2500;   // 270°
+const int SERVO_RANGE_DEG = 270;
+
+void writeDegrees(Servo &servo, float degrees) {
+    degrees = constrain(degrees, 0, SERVO_RANGE_DEG);
+    int us = map(degrees, 0, SERVO_RANGE_DEG, SERVO_MIN_US, SERVO_MAX_US);
+    servo.writeMicroseconds(us);
+}
+
+const unsigned long SERVO_MOVE_MS = 800;  // tune to how long your servos actually take
+unsigned long servoActionStartTime = 0;
 
 int currentFixture = 0;
 
@@ -209,26 +225,21 @@ bool runActions() {
 
             case ACTION_GRAB:
                 grabMount();
+                servoActionStartTime = millis();
                 break;
 
             case ACTION_LOOSEN:
                 releaseGripSlighty();
+                servoActionStartTime = millis();
                 break;
 
             case ACTION_OPEN:
                 openGripper();
+                servoActionStartTime = millis();
                 break;
         }
 
         actionStarted = true;
-
-        // Servo actions don't need to wait for a motor.
-        if (action.type == ACTION_GRAB ||
-            action.type == ACTION_LOOSEN ||
-            action.type == ACTION_OPEN) {
-            currentAction++;
-            actionStarted = false;
-        }
     }
 
     if (action.type == ACTION_TABLE &&
@@ -250,6 +261,14 @@ bool runActions() {
         actionStarted = false;
     }
 
+    else if ((action.type == ACTION_GRAB ||
+            action.type == ACTION_LOOSEN ||
+            action.type == ACTION_OPEN) &&
+            (millis() - servoActionStartTime) >= SERVO_MOVE_MS) {
+        currentAction++;
+        actionStarted = false;
+    }
+
     return false;
 }
 
@@ -257,7 +276,7 @@ bool runActions() {
 
 bool outputBeltActive = false;
 unsigned long outputBeltStopTime = 0;
-const unsigned long OUTPUT_CLEAR_MS = 5000;  // tune to your belt/mount
+const unsigned long OUTPUT_CLEAR_MS = 3200;  // tune to your belt/mount
 
 void startOutputBelt() {
     outputBeltActive = true;
@@ -317,15 +336,11 @@ void setup() {
     motorNema23Screw.setMaxSpeed(20000);
     motorNema23Screw.setAcceleration(12000);
 
-    servo1.attach(SERVO1_PIN);
-    servo2.attach(SERVO2_PIN);
+    servo1.attach(SERVO1_PIN, SERVO_MIN_US, SERVO_MAX_US);
+    servo2.attach(SERVO2_PIN, SERVO_MIN_US, SERVO_MAX_US);
 
-    // 0 is open for servo 1
-    servo1.write(SERVO1_GRAB);
-
-    // 21 is open for servo 2 (the servo closer to the middle)
-    servo2.write(SERVO2_GRAB);
-    // openGripper();
+    openGripper();
+    // grabMount();
 
     Serial.println("ROBOT STARTING");
 }
@@ -335,20 +350,20 @@ void setup() {
 // ============================================================
 
 void loop() {
-    // runMotors();
+    runMotors();
 
-    // serviceInputBelt(); 
-    // if (!homed) {
-    //     runHoming();
-    //     updateFixtureButtonLight();
-    //     return;
-    // }
-    // serviceOutputBelt(); 
+    serviceInputBelt(); 
+    if (!homed) {
+        runHoming();
+        updateFixtureButtonLight();
+        return;
+    }
+    serviceOutputBelt(); 
     
 
-    // runMainProcess();
-    // runFixtureManager();
-    // updateFixtureButtonLight();
+    runMainProcess();
+    runFixtureManager();
+    updateFixtureButtonLight();
 }
 
 // ============================================================
@@ -423,6 +438,8 @@ void runHoming() {
             else {
                 motorFixturePlayer.stop();
                 motorFixturePlayer.setCurrentPosition(0);
+
+                // motorFixturePlayer.move(-10);  // <-- one-time offset
                 currentFixture = 0;
                 Serial.println("Fixture homed.");
                 homeState = HOME_COMPLETE;
@@ -462,7 +479,7 @@ void runMainProcess() {
                 addScrew(79);
                 addGrab();
                 addLoosen();
-                addScrew(82);
+                addScrew(85);
                 addGrab();
                 actionsRunning = true;
             }
@@ -478,8 +495,8 @@ void runMainProcess() {
 
                 clearActions();
 
-                addScrew(50);
-                addTable(113.5);
+                addScrew(46);
+                addTable(115.5);
 
                 actionsRunning = true;
             }
@@ -492,7 +509,7 @@ void runMainProcess() {
             break;
 
         case PROCESS_WAIT_FOR_VHB:
-            if (fixtureHasVHB[currentFixture]) {
+            if (fixtureHasVHB[currentFixture] && fixtureState != FIXTURE_ROTATING) {
                 Serial.println("VHB FIXTURE READY");
                 processState = PROCESS_LOWER_ONTO_VHB;
             }
@@ -512,7 +529,7 @@ void runMainProcess() {
         case PROCESS_RAISE_AWAY_VHB:
             // Serial.println("RAISING FROM VHB");
             
-            ScrewToMM(55);
+            ScrewToMM(50);
 
             if (motorNema23Screw.distanceToGo() == 0) {
                 armUsingFixture = false;
@@ -528,11 +545,11 @@ void runMainProcess() {
                 clearActions();
 
                 addTableAndScrew(36, 51);
-                addScrew(75);
+                addScrew(77);
                 addTable(54);
                 addScrew(70);
                 addTable(36);
-                addScrew(75);
+                addScrew(77);
                 addTable(18);
 
                 actionsRunning = true;
@@ -546,7 +563,7 @@ void runMainProcess() {
         case PROCESS_RAISE_MOUNT:
             // Serial.println("RAISING MOUNT");
 
-            ScrewToMM(40);
+            ScrewToMM(38);
 
             if (motorNema23Screw.distanceToGo() == 0) {
                 processState = PROCESS_MOVE_TO_OUTPUT;
@@ -579,12 +596,12 @@ void runMainProcess() {
 
                 openGripper();
                 addScrew(45);
-                startOutputBelt(); 
-
+                
                 actionsRunning = true;
             }
 
             if (runActions()) {
+                startOutputBelt(); 
                 processState = PROCESS_WAIT_MOUNT;
             }
 
@@ -664,18 +681,18 @@ void updateFixtureButtonLight() {
 // ============================================================
 
 void openGripper() {
-    servo1.write(SERVO1_OPEN);
-    servo2.write(SERVO2_OPEN);
+    writeDegrees(servo1, SERVO1_OPEN);
+    writeDegrees(servo2, SERVO2_OPEN);
 }
 
 void grabMount() {
-    servo1.write(SERVO1_GRAB);
-    servo2.write(SERVO2_GRAB);
+    writeDegrees(servo1, SERVO1_GRAB);
+    writeDegrees(servo2, SERVO2_GRAB);
 }
 
 void releaseGripSlighty() {
-    servo1.write(SERVO1_GRAB_LOOSE);
-    servo2.write(SERVO2_GRAB_LOOSE);
+    writeDegrees(servo1, SERVO1_GRAB_LOOSE);
+    writeDegrees(servo2, SERVO2_GRAB_LOOSE);
 }
 
 // ============================================================
