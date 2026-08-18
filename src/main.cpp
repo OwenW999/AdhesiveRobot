@@ -44,7 +44,7 @@ const long QUARTER_REV_STEPS = 1000;
 
 // TUNE MORE
 const int SERVO1_OPEN = 0;
-const int SERVO2_OPEN = 8;
+const int SERVO2_OPEN = 16;
 const int SERVO1_GRAB = 64;
 const int SERVO2_GRAB = 269;
 
@@ -61,7 +61,7 @@ void writeDegrees(Servo &servo, float degrees) {
     servo.writeMicroseconds(us);
 }
 
-const unsigned long SERVO_MOVE_MS = 800;  // tune to how long your servos actually take
+const unsigned long SERVO_MOVE_MS = 900;  // tune to how long your servos actually take
 unsigned long servoActionStartTime = 0;
 
 int currentFixture = 0;
@@ -350,6 +350,10 @@ void setup() {
 // ============================================================
 
 void loop() {
+    // openGripper();
+    // delay(5000);
+    // grabMount();
+    // delay(5000);
     runMotors();
 
     serviceInputBelt(); 
@@ -364,6 +368,8 @@ void loop() {
     runMainProcess();
     runFixtureManager();
     updateFixtureButtonLight();
+    // TableToDeg(115.2);
+    // ScrewToMM(46);
 }
 
 // ============================================================
@@ -496,7 +502,7 @@ void runMainProcess() {
                 clearActions();
 
                 addScrew(46);
-                addTable(114.9);
+                addTable(114.65);
 
                 actionsRunning = true;
             }
@@ -519,7 +525,7 @@ void runMainProcess() {
             // Serial.println("LOWERING ONTO VHB");
 
             armUsingFixture = true;
-            ScrewToMM(63);
+            ScrewToMM(61.5);
 
             if (motorNema23Screw.distanceToGo() == 0) {
                 processState = PROCESS_RAISE_AWAY_VHB;
