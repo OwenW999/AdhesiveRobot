@@ -45,8 +45,8 @@ const long QUARTER_REV_STEPS = 1000;
 // TUNE MORE
 const int SERVO1_OPEN = 0;
 const int SERVO2_OPEN = 8;
-const int SERVO1_GRAB = 62;
-const int SERVO2_GRAB = 268;
+const int SERVO1_GRAB = 64;
+const int SERVO2_GRAB = 269;
 
 const int SERVO1_GRAB_LOOSE = 55;
 const int SERVO2_GRAB_LOOSE = 260;
@@ -407,7 +407,7 @@ void runHoming() {
             break;
 
         case HOME_TABLE:
-            motorNema23Table.setSpeed(-500);
+            motorNema23Table.setSpeed(-300);
 
             if (digitalRead(LIMIT_NEMA23) == LOW) {
                 motorNema23Table.runSpeed();
@@ -439,7 +439,7 @@ void runHoming() {
                 motorFixturePlayer.stop();
                 motorFixturePlayer.setCurrentPosition(0);
 
-                // motorFixturePlayer.move(-10);  // <-- one-time offset
+                motorFixturePlayer.move(-10);  // <-- one-time offset
                 currentFixture = 0;
                 Serial.println("Fixture homed.");
                 homeState = HOME_COMPLETE;
@@ -496,7 +496,7 @@ void runMainProcess() {
                 clearActions();
 
                 addScrew(46);
-                addTable(115.5);
+                addTable(114.9);
 
                 actionsRunning = true;
             }
@@ -529,7 +529,7 @@ void runMainProcess() {
         case PROCESS_RAISE_AWAY_VHB:
             // Serial.println("RAISING FROM VHB");
             
-            ScrewToMM(50);
+            ScrewToMM(43);
 
             if (motorNema23Screw.distanceToGo() == 0) {
                 armUsingFixture = false;
@@ -545,11 +545,11 @@ void runMainProcess() {
                 clearActions();
 
                 addTableAndScrew(36, 51);
-                addScrew(77);
+                addScrew(88);
                 addTable(54);
                 addScrew(70);
                 addTable(36);
-                addScrew(77);
+                addScrew(88);
                 addTable(18);
 
                 actionsRunning = true;
