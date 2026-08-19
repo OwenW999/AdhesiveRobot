@@ -501,7 +501,7 @@ void runMainProcess() {
 
                 clearActions();
 
-                addScrew(46);
+                addScrew(31);
                 addTable(114.65);
 
                 actionsRunning = true;
@@ -525,7 +525,7 @@ void runMainProcess() {
             // Serial.println("LOWERING ONTO VHB");
 
             armUsingFixture = true;
-            ScrewToMM(61.5);
+            ScrewToMM(61.8);
 
             if (motorNema23Screw.distanceToGo() == 0) {
                 processState = PROCESS_RAISE_AWAY_VHB;
@@ -569,7 +569,7 @@ void runMainProcess() {
         case PROCESS_RAISE_MOUNT:
             // Serial.println("RAISING MOUNT");
 
-            ScrewToMM(38);
+            ScrewToMM(30);
 
             if (motorNema23Screw.distanceToGo() == 0) {
                 processState = PROCESS_MOVE_TO_OUTPUT;
